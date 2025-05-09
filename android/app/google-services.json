@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "479270064654",
+    "project_id": "food-8d58f",
+    "storage_bucket": "food-8d58f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:479270064654:android:a176cd478b425bc9b0a25f",
+        "android_client_info": {
+          "package_name": "com.example.tennet_exerice"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB3zPuHsY2nWWx33u0SZ39BauCCG0LOcaM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
