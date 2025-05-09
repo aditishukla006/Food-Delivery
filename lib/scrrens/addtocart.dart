@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -12,10 +13,10 @@ class Addtocart extends StatefulWidget {
 class _AddtocartState extends State<Addtocart> {
   bool showSummaryCard = false;
   bool isHalf = true;
-  bool showAddressForm = false;
+  bool showAddressForm = false; // Controls whether the address form is visible
   TextEditingController nameController = TextEditingController();
   TextEditingController addressController = TextEditingController();
-  List<Map<String, dynamic>> savedAddresses = [];
+  List<Map<String, String>> savedAddresses = [];
 
   // Firebase instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -45,12 +46,15 @@ class _AddtocartState extends State<Addtocart> {
               final data = doc.data();
 
               return {
-                'title': data['title'] ?? 'No title',
-                'image': data['image'] ?? '',
-                'rating': data['rating'] ?? 0,
-                'isVeg': data['isVeg'] ?? true,
-                'oldPrice': data['oldPrice'] ?? 0,
-                'newPrice': data['newPrice'] ?? data['oldPrice'] ?? 0,
+                'title': data['title']?.toString() ?? 'No title',
+                'image': data['image']?.toString() ?? 'assets/thali1.jpg',
+                'rating': data['rating'] is num ? data['rating'] : 0,
+                'isVeg': data['isVeg'] is bool ? data['isVeg'] : true,
+                'oldPrice': data['oldPrice'] is num ? data['oldPrice'] : 0,
+                'newPrice':
+                    data['newPrice'] is num
+                        ? data['newPrice']
+                        : (data['oldPrice'] is num ? data['oldPrice'] : 0),
               };
             }).toList();
       });
@@ -99,8 +103,8 @@ class _AddtocartState extends State<Addtocart> {
       if (existingIndex == -1) {
         cartItems.add({
           'image': foodItems[index]['image'],
-          'name': foodItems[index]['name'],
-          'price': foodItems[index]['price'],
+          'name': foodItems[index]['title'],
+          'price': foodItems[index]['newPrice'],
           'quantity': isHalf ? 0.5 : 1,
         });
       } else {
@@ -112,8 +116,8 @@ class _AddtocartState extends State<Addtocart> {
       if (user != null) {
         _firestore.collection('users').doc(user.uid).collection('cart').add({
           'image': foodItems[index]['image'],
-          'name': foodItems[index]['name'],
-          'price': foodItems[index]['price'],
+          'name': foodItems[index]['title'],
+          'price': foodItems[index]['newPrice'],
           'quantity': isHalf ? 0.5 : 1,
         });
       }
@@ -142,6 +146,188 @@ class _AddtocartState extends State<Addtocart> {
             .update({'quantity': cartItems[index]['quantity']});
       }
     });
+  }
+
+  void saveAddress() {
+    if (nameController.text.isNotEmpty && addressController.text.isNotEmpty) {
+      setState(() {
+        savedAddresses.add({
+          'name': nameController.text,
+          'address': addressController.text,
+        });
+        showAddressForm = false; // Hide the form after saving
+      });
+    }
+  }
+
+  void showAddressCard(BuildContext context) {
+    final formKey = GlobalKey<FormState>();
+    String name = '';
+    String address = '';
+
+    print("Button Pressed: Opening address form");
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder:
+          (_) => Padding(
+            padding: const EdgeInsets.fromLTRB(16, 25, 16, 40),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      'Create new address',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    const Spacer(),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        print("New button clicked");
+
+                        // Show the modal bottom sheet when the 'New' button is clicked
+                        showModalBottomSheet(
+                          context: context,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                          ),
+                          isScrollControlled: true,
+                          builder:
+                              (_) => Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Form(
+                                  key: formKey,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TextFormField(
+                                        decoration: InputDecoration(
+                                          labelText: 'Name',
+                                        ),
+                                        onChanged: (value) => name = value,
+                                        validator:
+                                            (value) =>
+                                                value!.isEmpty
+                                                    ? 'Please enter name'
+                                                    : null,
+                                      ),
+                                      TextFormField(
+                                        decoration: InputDecoration(
+                                          labelText: 'Address',
+                                        ),
+                                        onChanged: (value) => address = value,
+                                        validator:
+                                            (value) =>
+                                                value!.isEmpty
+                                                    ? 'Please enter address'
+                                                    : null,
+                                      ),
+                                      SizedBox(height: 20),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          if (formKey.currentState!
+                                              .validate()) {
+                                            // If the form is valid, add the address
+                                            setState(() {
+                                              savedAddresses.add({
+                                                'name': name,
+                                                'address': address,
+                                              });
+                                              Navigator.pop(
+                                                context,
+                                              ); // Close the bottom sheet
+                                            });
+                                          }
+                                        },
+                                        child: Text('Save Address'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                        );
+                      },
+                      icon: Icon(Icons.add, size: 16),
+                      label: Text('New'),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.black,
+                        backgroundColor: Colors.white,
+                        elevation: 0,
+                        side: BorderSide(color: Colors.black12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                if (savedAddresses.isNotEmpty)
+                  ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: savedAddresses.length,
+                    itemBuilder: (context, index) {
+                      return Container(
+                        padding: const EdgeInsets.all(20),
+                        margin: const EdgeInsets.symmetric(vertical: 15),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    savedAddresses[index]['name']!,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(savedAddresses[index]['address']!),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.radio_button_checked,
+                              color: Colors.amber,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      showSummaryCard = true;
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    minimumSize: Size(double.infinity, 42),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: const Text('Next'),
+                ),
+              ],
+            ),
+          ),
+    );
   }
 
   @override
@@ -232,7 +418,7 @@ class _AddtocartState extends State<Addtocart> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          item['name'],
+                                          item['title'],
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16,
@@ -240,12 +426,12 @@ class _AddtocartState extends State<Addtocart> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          item['type'] == 'veg'
+                                          item['isVeg'] == true
                                               ? '● veg'
                                               : '▲ non veg',
                                           style: TextStyle(
                                             color:
-                                                item['type'] == 'veg'
+                                                item['isVeg'] == true
                                                     ? Colors.green
                                                     : Colors.red,
                                             fontSize: 13,
@@ -253,7 +439,7 @@ class _AddtocartState extends State<Addtocart> {
                                         ),
                                         const SizedBox(height: 6),
                                         Text(
-                                          '₹${item['price']}',
+                                          '₹${item['newPrice']}',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -284,7 +470,6 @@ class _AddtocartState extends State<Addtocart> {
                         },
                       ),
             ),
-            // Add cart summary and action buttons below
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
               decoration: BoxDecoration(
@@ -360,7 +545,7 @@ class _AddtocartState extends State<Addtocart> {
                     ),
                   const SizedBox(height: 10),
                   ElevatedButton(
-                    onPressed: () {},
+                    onPressed: () => showAddressCard(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.amber,
                       minimumSize: Size(double.infinity, 42),
