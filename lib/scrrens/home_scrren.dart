@@ -162,7 +162,6 @@ class _HomePageState extends State<HomePage> {
               ),
               const SizedBox(height: 20),
 
-              // Cuisine Grid
               GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
@@ -256,7 +255,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 20),
-              // Featured Hives
               const SizedBox(height: 20),
               RichText(
                 text: const TextSpan(
@@ -486,8 +484,7 @@ class _HomePageState extends State<HomePage> {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    // Add after Hiveverse section
-                    const SizedBox(height: 24), // spacing after Hiveverse
+                    const SizedBox(height: 24),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -506,7 +503,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(width: 16),
-              // Add this after Hiveverse or your previous section
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -559,7 +555,7 @@ class _HomePageState extends State<HomePage> {
                           value: isVeg,
                           onChanged: (val) {
                             setState(() {
-                              isVeg = val; // Update the state based on toggle
+                              isVeg = val;
                             });
                           },
                           activeColor: Colors.green,

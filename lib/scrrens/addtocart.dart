@@ -55,7 +55,7 @@ class _AddtocartState extends State<Addtocart> {
             }).toList();
       });
     } catch (e) {
-      print("❌ Error fetching food items: $e");
+      print("Error fetching food items: $e");
     }
   }
 

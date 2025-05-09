@@ -5,7 +5,7 @@ class FirebaseService {
   // ignore: unused_field
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Fetch food items from Firestore
+  // Fetch food items from firestore
   Future<List<FoodItem>> getFoodItems() async {
     final snapshot =
         await FirebaseFirestore.instance.collection('foodItem').get();
