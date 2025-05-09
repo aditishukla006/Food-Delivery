@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -13,25 +12,23 @@ class Addtocart extends StatefulWidget {
 class _AddtocartState extends State<Addtocart> {
   bool showSummaryCard = false;
   bool isHalf = true;
-  bool showAddressForm = false; // Controls whether the address form is visible
+  bool showAddressForm = false;
   TextEditingController nameController = TextEditingController();
   TextEditingController addressController = TextEditingController();
   List<Map<String, String>> savedAddresses = [];
+  TextEditingController couponController = TextEditingController();
+  double discountAmount = 0;
 
-  // Firebase instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  List<Map<String, dynamic>> foodItems =
-      []; // Food items list fetched from Firestore
+  List<Map<String, dynamic>> foodItems = [];
   List<Map<String, dynamic>> cartItems = [];
 
   @override
   void initState() {
     super.initState();
-    // Fetch food items from Firestore
     _fetchFoodItems();
-    // Fetch cart items from Firestore on initial load
     _fetchCartItems();
   }
 
@@ -39,12 +36,10 @@ class _AddtocartState extends State<Addtocart> {
     try {
       final snapshot =
           await FirebaseFirestore.instance.collection('foodItem').get();
-
       setState(() {
         foodItems =
             snapshot.docs.map((doc) {
               final data = doc.data();
-
               return {
                 'title': data['title']?.toString() ?? 'No title',
                 'image': data['image']?.toString() ?? 'assets/thali1.jpg',
@@ -63,11 +58,10 @@ class _AddtocartState extends State<Addtocart> {
     }
   }
 
-  // Fetch cart items from Firestore
   void _fetchCartItems() async {
-    final user = _auth.currentUser; // Get the current user
+    final user = _auth.currentUser;
     if (user != null) {
-      final userId = user.uid; // Get the UID of the authenticated user
+      final userId = user.uid;
       try {
         final snapshot =
             await _firestore
@@ -111,7 +105,6 @@ class _AddtocartState extends State<Addtocart> {
         cartItems[existingIndex]['quantity'] += isHalf ? 0.5 : 1;
       }
 
-      // Add to Firestore (update cart)
       final user = _auth.currentUser;
       if (user != null) {
         _firestore.collection('users').doc(user.uid).collection('cart').add({
@@ -132,10 +125,10 @@ class _AddtocartState extends State<Addtocart> {
         cartItems[index]['quantity'] -= isHalf ? 0.5 : 1;
         if (cartItems[index]['quantity'] <= 0) {
           cartItems.removeAt(index);
+          return;
         }
       }
 
-      // Update Firestore cart
       final user = _auth.currentUser;
       if (user != null) {
         _firestore
@@ -148,24 +141,10 @@ class _AddtocartState extends State<Addtocart> {
     });
   }
 
-  void saveAddress() {
-    if (nameController.text.isNotEmpty && addressController.text.isNotEmpty) {
-      setState(() {
-        savedAddresses.add({
-          'name': nameController.text,
-          'address': addressController.text,
-        });
-        showAddressForm = false; // Hide the form after saving
-      });
-    }
-  }
-
   void showAddressCard(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     String name = '';
     String address = '';
-
-    print("Button Pressed: Opening address form");
 
     showModalBottomSheet(
       context: context,
@@ -188,9 +167,6 @@ class _AddtocartState extends State<Addtocart> {
                     const Spacer(),
                     ElevatedButton.icon(
                       onPressed: () {
-                        print("New button clicked");
-
-                        // Show the modal bottom sheet when the 'New' button is clicked
                         showModalBottomSheet(
                           context: context,
                           shape: RoundedRectangleBorder(
@@ -234,16 +210,13 @@ class _AddtocartState extends State<Addtocart> {
                                         onPressed: () {
                                           if (formKey.currentState!
                                               .validate()) {
-                                            // If the form is valid, add the address
                                             setState(() {
                                               savedAddresses.add({
                                                 'name': name,
                                                 'address': address,
                                               });
-                                              Navigator.pop(
-                                                context,
-                                              ); // Close the bottom sheet
                                             });
+                                            Navigator.pop(context);
                                           }
                                         },
                                         child: Text('Save Address'),
@@ -269,7 +242,6 @@ class _AddtocartState extends State<Addtocart> {
                   ],
                 ),
                 const SizedBox(height: 16),
-
                 if (savedAddresses.isNotEmpty)
                   ListView.builder(
                     shrinkWrap: true,
@@ -311,8 +283,11 @@ class _AddtocartState extends State<Addtocart> {
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    setState(() {
-                      showSummaryCard = true;
+                    Navigator.pop(context);
+                    Future.delayed(Duration(milliseconds: 100), () {
+                      setState(() {
+                        showSummaryCard = true;
+                      });
                     });
                   },
                   style: ElevatedButton.styleFrom(
@@ -327,6 +302,47 @@ class _AddtocartState extends State<Addtocart> {
               ],
             ),
           ),
+    );
+  }
+
+  double getSubtotal() {
+    return cartItems.fold(
+      0,
+      (sum, item) => sum + (item['price'] * item['quantity']),
+    );
+  }
+
+  double getDeliveryCharge() => 20;
+
+  double getPlatformFee() => 0;
+
+  double getTotal() {
+    return getSubtotal() +
+        getDeliveryCharge() +
+        getPlatformFee() -
+        discountAmount;
+  }
+
+  Widget _buildPriceRow(String label, double value, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            "₹ ${value.toStringAsFixed(2)}",
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -543,6 +559,108 @@ class _AddtocartState extends State<Addtocart> {
                             );
                           }).toList(),
                     ),
+                  if (showSummaryCard) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ...cartItems.map((item) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.asset(
+                                      item['image'],
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item['name'],
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text("Qty: ${item['quantity']}"),
+                                      ],
+                                    ),
+                                  ),
+                                  Text(
+                                    "₹${(item['price'] * item['quantity']).toStringAsFixed(2)}",
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          const Divider(thickness: 1),
+                          TextField(
+                            controller: couponController,
+                            decoration: InputDecoration(
+                              hintText: 'Enter coupon code',
+                              suffixIcon: TextButton(
+                                child: const Text('Apply'),
+                                onPressed: () {
+                                  String code = couponController.text.trim();
+                                  setState(() {
+                                    discountAmount =
+                                        code == 'KUNALDEB2025' ? 150 : 0;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildPriceRow("Sub Total", getSubtotal()),
+                          _buildPriceRow(
+                            "Delivery Charges",
+                            getDeliveryCharge(),
+                          ),
+                          _buildPriceRow("Discount", -discountAmount),
+                          _buildPriceRow("Platform Fee", getPlatformFee()),
+                          const Divider(thickness: 1),
+                          _buildPriceRow("Total", getTotal(), isBold: true),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    "Order placed for ₹${getTotal().toStringAsFixed(2)}",
+                                  ),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size(double.infinity, 48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text("Checkout"),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 10),
                   ElevatedButton(
                     onPressed: () => showAddressCard(context),
