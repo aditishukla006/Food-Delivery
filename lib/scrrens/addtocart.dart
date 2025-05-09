@@ -36,26 +36,26 @@ class _AddtocartState extends State<Addtocart> {
 
   void _fetchFoodItems() async {
     try {
-      final snapshot = await _firestore.collection('foodItem').get();
+      final snapshot =
+          await FirebaseFirestore.instance.collection('foodItem').get();
+
       setState(() {
         foodItems =
             snapshot.docs.map((doc) {
-              // Safely access the 'newPrice' field
-              var price =
-                  doc.data().containsKey('newPrice')
-                      ? doc['newPrice']
-                      : doc['oldPrice'];
+              final data = doc.data();
+
               return {
-                'image': doc['image'],
-                'title': doc['title'],
-                'price': price, // Use the correct price field
-                'rating': doc['rating'],
-                'isVeg': doc['isVeg'],
+                'title': data['title'] ?? 'No title',
+                'image': data['image'] ?? '',
+                'rating': data['rating'] ?? 0,
+                'isVeg': data['isVeg'] ?? true,
+                'oldPrice': data['oldPrice'] ?? 0,
+                'newPrice': data['newPrice'] ?? data['oldPrice'] ?? 0,
               };
             }).toList();
       });
     } catch (e) {
-      print("Error fetching food items: $e");
+      print("❌ Error fetching food items: $e");
     }
   }
 
