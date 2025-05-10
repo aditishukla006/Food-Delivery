@@ -374,7 +374,7 @@ class _AddtocartState extends State<Addtocart> {
                       ),
                       children: const [
                         TextSpan(
-                          text: ' & Repeat',
+                          text: ' \n& Repeat',
                           style: TextStyle(color: Colors.black),
                         ),
                       ],
@@ -479,7 +479,13 @@ class _AddtocartState extends State<Addtocart> {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                     ),
-                                    child: const Text('Eat 🍴'),
+                                    child: const Text(
+                                      'Eat 🍴',
+                                      style: TextStyle(
+                                        backgroundColor: Colors.amber,
+                                        fontSize: 20,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
