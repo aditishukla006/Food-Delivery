@@ -481,10 +481,7 @@ class _AddtocartState extends State<Addtocart> {
                                     ),
                                     child: const Text(
                                       'Eat 🍴',
-                                      style: TextStyle(
-                                        backgroundColor: Colors.amber,
-                                        fontSize: 20,
-                                      ),
+                                      style: TextStyle(fontSize: 20),
                                     ),
                                   ),
                                 ],
@@ -581,135 +578,151 @@ class _AddtocartState extends State<Addtocart> {
                         ),
                       ),
                     if (showSummaryCard) ...[
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.vertical,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ...cartItems.map((item) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 12),
-                                  child: Row(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(10),
-                                        child: Image.asset(
-                                          item['image'],
-                                          width: 50,
-                                          height: 50,
-                                          fit: BoxFit.cover,
+                      const SizedBox(height: 20),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.vertical,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.vertical,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ...cartItems.map((item) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: Row(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          child: Image.asset(
+                                            item['image'],
+                                            width: 50,
+                                            height: 50,
+                                            fit: BoxFit.cover,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              item['name'],
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                item['name'],
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
                                               ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text("Qty: ${item['quantity']}"),
-                                          ],
+                                              const SizedBox(height: 4),
+                                              Text("Qty: ${item['quantity']}"),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                      Text(
-                                        "₹${(item['price'] * item['quantity']).toStringAsFixed(2)}",
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }),
-                              const Divider(thickness: 1),
-                              TextField(
-                                controller: couponController,
-                                decoration: InputDecoration(
-                                  hintText: 'Enter coupon code',
-                                  suffixIcon: TextButton(
-                                    child: const Text('Apply'),
-                                    onPressed: () {
-                                      String code =
-                                          couponController.text.trim();
-                                      setState(() {
-                                        discountAmount =
-                                            code == 'KUNALDEB2025' ? 150 : 0;
-                                      });
-                                    },
+                                        Text(
+                                          "₹${(item['price'] * item['quantity']).toStringAsFixed(2)}",
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                                const Divider(thickness: 1),
+                                TextField(
+                                  controller: couponController,
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter coupon code',
+                                    suffixIcon: TextButton(
+                                      child: const Text('Apply'),
+                                      onPressed: () {
+                                        String code =
+                                            couponController.text.trim();
+                                        setState(() {
+                                          discountAmount =
+                                              code == 'KUNALDEB2025' ? 150 : 0;
+                                        });
+                                      },
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                              _buildPriceRow("Sub Total", getSubtotal()),
-                              _buildPriceRow(
-                                "Delivery Charges",
-                                getDeliveryCharge(),
-                              ),
-                              _buildPriceRow("Discount", -discountAmount),
-                              _buildPriceRow("Platform Fee", getPlatformFee()),
-                              const Divider(thickness: 1),
-                              _buildPriceRow("Total", getTotal(), isBold: true),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () {
-                                  if (cartItems.isEmpty) {
+                                const SizedBox(height: 12),
+                                _buildPriceRow("Sub Total", getSubtotal()),
+                                _buildPriceRow(
+                                  "Delivery Charges",
+                                  getDeliveryCharge(),
+                                ),
+                                _buildPriceRow("Discount", -discountAmount),
+                                _buildPriceRow(
+                                  "Platform Fee",
+                                  getPlatformFee(),
+                                ),
+                                const Divider(thickness: 1),
+                                _buildPriceRow(
+                                  "Total",
+                                  getTotal(),
+                                  isBold: true,
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    if (cartItems.isEmpty) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            "Cart is empty. Add some items before checking out.",
+                                          ),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      Navigator.pop(context);
+                                      return;
+                                    }
+
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          "Cart is empty. Add some items before checking out.",
+                                          "Order placed for ₹${getTotal().toStringAsFixed(2)}",
                                         ),
-                                        backgroundColor: Colors.red,
+                                        duration: Duration(seconds: 2),
                                       ),
                                     );
-                                    Navigator.pop(context);
-                                    return;
-                                  }
 
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        "Order placed for ₹${getTotal().toStringAsFixed(2)}",
-                                      ),
-                                      duration: Duration(seconds: 2),
+                                    Future.delayed(Duration(seconds: 2), () {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => HomePage(),
+                                        ),
+                                      );
+                                    });
+                                  },
+
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(
+                                      double.infinity,
+                                      48,
                                     ),
-                                  );
-
-                                  Future.delayed(Duration(seconds: 2), () {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => HomePage(),
-                                      ),
-                                    );
-                                  });
-                                },
-
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  foregroundColor: Colors.white,
-                                  minimumSize: const Size(double.infinity, 48),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
                                   ),
+                                  child: const Text("Checkout"),
                                 ),
-                                child: const Text("Checkout"),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ],
-
                     const SizedBox(height: 10),
                     ElevatedButton(
                       onPressed: () => showAddressCard(context),
