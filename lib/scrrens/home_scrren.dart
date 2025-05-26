@@ -5,6 +5,7 @@ import 'package:project/scrrens/fooditem.dart';
 import 'package:project/widgets/cuisine_Section.dart';
 import 'package:project/widgets/food_Scroll.dart';
 import 'package:project/widgets/food_playlist.dart';
+import 'package:project/widgets/hiverse_section.dart';
 import 'package:project/widgets/leaderboard_section.dart';
 import 'package:project/widgets/restaurant_Section.dart';
 
@@ -136,55 +137,7 @@ class _HomePageState extends State<HomePage> {
               ),
 
               const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Hiveverse',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildHiveImageCard(
-                          imagePath: 'assets/drophive.png',
-                          label: 'Parcel Delivery',
-                        ),
-                        _buildHiveImageCard(
-                          imagePath: 'assets/medihive.png',
-                          label: 'Medicines',
-                        ),
-                        _buildHiveImageCard(
-                          imagePath: 'assets/shophive.png',
-                          label: 'Groceries',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    const SizedBox(height: 24),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 16),
-                          _buildFoodImageCard('assets/cafe1.jpg'),
-                          const SizedBox(width: 12),
-                          _buildFoodImageCard('assets/cafe2.jpg'),
-                          const SizedBox(width: 16),
-                          _buildFoodImageCard('assets/cafe3.jpg'),
-                          const SizedBox(width: 16),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              HiveverseSection(),
               const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -398,52 +351,5 @@ Widget _buildFoodItemCard(
         ),
       ],
     ),
-  );
-}
-
-Widget _buildFoodImageCard(String imagePath) {
-  return ClipRRect(
-    borderRadius: BorderRadius.circular(20),
-    child: Container(
-      width: 200,
-      height: 300,
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 4)),
-        ],
-      ),
-      child: Image.asset(imagePath, fit: BoxFit.cover),
-    ),
-  );
-}
-
-Widget _buildHiveImageCard({required String imagePath, required String label}) {
-  return Column(
-    children: [
-      Container(
-        width: 100,
-        height: 100,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6,
-              offset: Offset(0, 3),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Image.asset(imagePath, fit: BoxFit.cover),
-        ),
-      ),
-      const SizedBox(height: 8),
-      Text(
-        label,
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-      ),
-    ],
   );
 }

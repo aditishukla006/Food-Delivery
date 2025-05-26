@@ -40,32 +40,29 @@ class CuisineSection extends StatelessWidget {
 
             final docs = snapshot.data!.docs;
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 2.6,
-                children:
-                    docs.map((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
+            return GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 2.6,
+              children:
+                  docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
 
-                      final image =
-                          (data['image'] != null &&
-                                  data['image'].toString().isNotEmpty)
-                              ? data['image'].toString()
-                              : 'assets/default_food.png'; // fallback image
+                    final image =
+                        (data['image'] != null &&
+                                data['image'].toString().isNotEmpty)
+                            ? data['image']
+                            : 'assets/default_food.png'; // fallback image
 
-                      return _CuisineCard(
-                        image: image,
-                        title: data['title'] ?? 'No Title',
-                        subtitle: data['subtitle'] ?? 'No Description',
-                      );
-                    }).toList(),
-              ),
+                    return _CuisineCard(
+                      image: image,
+                      title: data['title'] ?? 'No Title',
+                      subtitle: data['subtitle'] ?? 'No Description',
+                    );
+                  }).toList(),
             );
           },
         ),
@@ -96,11 +93,25 @@ class _CuisineCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          ClipOval(child: _buildImage(image)),
+          ClipOval(
+            child:
+                image.startsWith('http')
+                    ? Image.network(
+                      image,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                    )
+                    : Image.asset(
+                      image,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                    ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -109,14 +120,14 @@ class _CuisineCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
-                    fontSize: 16,
+                    fontSize: 18,
                   ),
                 ),
                 Text(
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13, color: Colors.black38),
+                  style: const TextStyle(fontSize: 14, color: Colors.black38),
                 ),
               ],
             ),
@@ -124,30 +135,5 @@ class _CuisineCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Widget _buildImage(String imagePath) {
-    // Use Network image if it's a URL, otherwise use asset image.
-    if (imagePath.startsWith('http')) {
-      return Image.network(
-        imagePath,
-        width: 48,
-        height: 48,
-        fit: BoxFit.cover,
-        errorBuilder:
-            (context, error, stackTrace) =>
-                Image.asset('assets/default_food.png', width: 48, height: 48),
-      );
-    } else {
-      return Image.asset(
-        imagePath,
-        width: 48,
-        height: 48,
-        fit: BoxFit.cover,
-        errorBuilder:
-            (context, error, stackTrace) =>
-                Image.asset('assets/default_food.png', width: 48, height: 48),
-      );
-    }
   }
 }

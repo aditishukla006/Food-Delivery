@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:project/scrrens/home_scrren.dart';
 import 'package:project/scrrens/loginscreen.dart';
 
 class SplashScreen extends StatefulWidget {
