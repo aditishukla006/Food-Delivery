@@ -11,12 +11,23 @@ class Addtocart extends StatefulWidget {
 }
 
 class _AddtocartState extends State<Addtocart> {
-  bool showSummaryCard = false;
+  bool hasAddressConfirmed = false;
+
   bool isHalf = true;
+  Set<int> addedToCartIndices = {};
+  List<Map<String, dynamic>> cartItems = [];
+  int? selectedCartIndex; // currently selected cart item
+
+  // current selected image in horizontal list
+  List<Map<String, String>> savedAddresses = [
+    {'name': 'Default User', 'address': '123 Main Street, City'},
+  ];
+
+  int selectedAddressIndex = 0;
+
   bool showAddressForm = false;
   TextEditingController nameController = TextEditingController();
   TextEditingController addressController = TextEditingController();
-  List<Map<String, String>> savedAddresses = [];
   TextEditingController couponController = TextEditingController();
   double discountAmount = 0;
 
@@ -24,7 +35,6 @@ class _AddtocartState extends State<Addtocart> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   List<Map<String, dynamic>> foodItems = [];
-  List<Map<String, dynamic>> cartItems = [];
 
   @override
   void initState() {
@@ -92,53 +102,72 @@ class _AddtocartState extends State<Addtocart> {
 
   void addToCart(int index) {
     setState(() {
+      // Toggle UI state for button background color
+      if (addedToCartIndices.contains(index)) {
+        addedToCartIndices.remove(index);
+      } else {
+        addedToCartIndices.add(index);
+      }
+
+      // Find if item already in cart
       int existingIndex = cartItems.indexWhere(
         (item) => item['image'] == foodItems[index]['image'],
       );
+
+      double qtyChange = isHalf ? 0.5 : 1;
 
       if (existingIndex == -1) {
         cartItems.add({
           'image': foodItems[index]['image'],
           'name': foodItems[index]['title'],
           'price': foodItems[index]['newPrice'],
-          'quantity': isHalf ? 0.5 : 1,
+          'quantity': qtyChange,
         });
+        selectedCartIndex = cartItems.length - 1; // new item
       } else {
-        cartItems[existingIndex]['quantity'] += isHalf ? 0.5 : 1;
+        cartItems[existingIndex]['quantity'] += qtyChange;
+        selectedCartIndex = existingIndex; // existing item
       }
 
+      // Optional: Firestore update
       final user = _auth.currentUser;
       if (user != null) {
         _firestore.collection('users').doc(user.uid).collection('cart').add({
           'image': foodItems[index]['image'],
           'name': foodItems[index]['title'],
           'price': foodItems[index]['newPrice'],
-          'quantity': isHalf ? 0.5 : 1,
+          'quantity': qtyChange,
         });
       }
     });
   }
 
-  void updateQuantity(int index, bool isIncrement) {
+  void updateQuantity(bool isIncrement) {
     setState(() {
+      if (selectedCartIndex == null) return;
+
+      double qtyChange = isHalf ? 0.5 : 1;
+
       if (isIncrement) {
-        cartItems[index]['quantity'] += isHalf ? 0.5 : 1;
+        cartItems[selectedCartIndex!]['quantity'] += qtyChange;
       } else {
-        cartItems[index]['quantity'] -= isHalf ? 0.5 : 1;
-        if (cartItems[index]['quantity'] <= 0) {
-          cartItems.removeAt(index);
+        cartItems[selectedCartIndex!]['quantity'] -= qtyChange;
+        if (cartItems[selectedCartIndex!]['quantity'] <= 0) {
+          cartItems.removeAt(selectedCartIndex!);
+          selectedCartIndex = null;
           return;
         }
       }
 
+      // Optional: Firestore update
       final user = _auth.currentUser;
       if (user != null) {
         _firestore
             .collection('users')
             .doc(user.uid)
             .collection('cart')
-            .doc(cartItems[index]['name'])
-            .update({'quantity': cartItems[index]['quantity']});
+            .doc(cartItems[selectedCartIndex!]['name'])
+            .update({'quantity': cartItems[selectedCartIndex!]['quantity']});
       }
     });
   }
@@ -150,43 +179,60 @@ class _AddtocartState extends State<Addtocart> {
 
     showModalBottomSheet(
       context: context,
-      shape: RoundedRectangleBorder(
+      shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       isScrollControlled: true,
-      builder:
-          (_) => Padding(
-            padding: const EdgeInsets.fromLTRB(16, 25, 16, 40),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'Create new address',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    const Spacer(),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(20),
+      builder: (_) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                25,
+                16,
+                MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header Row
+                  Row(
+                    children: [
+                      const Text(
+                        'Create new address',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          // Show New Address Form Bottom Sheet
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(20),
+                              ),
                             ),
-                          ),
-                          isScrollControlled: true,
-                          builder:
-                              (_) => Padding(
-                                padding: const EdgeInsets.all(16),
+                            builder: (_) {
+                              return Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  16,
+                                  16,
+                                  16,
+                                  MediaQuery.of(context).viewInsets.bottom + 20,
+                                ),
                                 child: Form(
                                   key: formKey,
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       TextFormField(
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                           labelText: 'Name',
                                         ),
                                         onChanged: (value) => name = value,
@@ -196,8 +242,9 @@ class _AddtocartState extends State<Addtocart> {
                                                     ? 'Please enter name'
                                                     : null,
                                       ),
+                                      const SizedBox(height: 12),
                                       TextFormField(
-                                        decoration: InputDecoration(
+                                        decoration: const InputDecoration(
                                           labelText: 'Address',
                                         ),
                                         onChanged: (value) => address = value,
@@ -207,7 +254,7 @@ class _AddtocartState extends State<Addtocart> {
                                                     ? 'Please enter address'
                                                     : null,
                                       ),
-                                      SizedBox(height: 20),
+                                      const SizedBox(height: 20),
                                       ElevatedButton(
                                         onPressed: () {
                                           if (formKey.currentState!
@@ -217,93 +264,131 @@ class _AddtocartState extends State<Addtocart> {
                                                 'name': name,
                                                 'address': address,
                                               });
+                                              selectedAddressIndex =
+                                                  savedAddresses.length - 1;
                                             });
                                             Navigator.pop(context);
+                                            setModalState(
+                                              () {},
+                                            ); // Refresh outer sheet
                                           }
                                         },
-                                        child: Text('Save Address'),
+                                        child: const Text('Save Address'),
                                       ),
                                     ],
                                   ),
                                 ),
-                              ),
-                        );
-                      },
-                      icon: Icon(Icons.add, size: 16),
-                      label: Text('New'),
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        backgroundColor: Colors.white,
-                        elevation: 0,
-                        side: BorderSide(color: Colors.black12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+                              );
+                            },
+                          );
+                        },
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('New'),
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.black,
+                          backgroundColor: Colors.white,
+                          elevation: 0,
+                          side: const BorderSide(color: Colors.black12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                if (savedAddresses.isNotEmpty)
-                  ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: savedAddresses.length,
-                    itemBuilder: (context, index) {
-                      return Container(
-                        padding: const EdgeInsets.all(20),
-                        margin: const EdgeInsets.symmetric(vertical: 15),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    savedAddresses[index]['name']!,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(savedAddresses[index]['address']!),
-                                ],
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Saved address list
+                  if (savedAddresses.isNotEmpty)
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: savedAddresses.length,
+                      itemBuilder: (context, index) {
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedAddressIndex = index;
+                            });
+                            setModalState(() {});
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color:
+                                  selectedAddressIndex == index
+                                      ? Colors.amber.withOpacity(0.2)
+                                      : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color:
+                                    selectedAddressIndex == index
+                                        ? Colors.amber
+                                        : Colors.grey.shade300,
                               ),
                             ),
-                            Icon(
-                              Icons.radio_button_checked,
-                              color: Colors.amber,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        savedAddresses[index]['name']!,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(savedAddresses[index]['address']!),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  selectedAddressIndex == 0
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
+                                  color: Colors.amber,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Future.delayed(Duration(milliseconds: 100), () {
-                      setState(() {
-                        showSummaryCard = true;
-                      });
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amber,
-                    minimumSize: Size(double.infinity, 42),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                          ),
+                        );
+                      },
                     ),
+
+                  const SizedBox(height: 20),
+
+                  // Next Button
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // close bottom sheet
+
+                      // Delay required to allow pop() to complete before setState
+                      Future.delayed(Duration(milliseconds: 100), () {
+                        setState(() {
+                          hasAddressConfirmed = true;
+                        });
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      minimumSize: Size(double.infinity, 42),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: const Text('Next'),
                   ),
-                  child: const Text('Next'),
-                ),
-              ],
-            ),
-          ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -352,7 +437,6 @@ class _AddtocartState extends State<Addtocart> {
   Widget build(BuildContext context) {
     var isVeg = true;
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
@@ -383,9 +467,31 @@ class _AddtocartState extends State<Addtocart> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      FilterChip(label: Text('under 200'), onSelected: (_) {}),
+                      FilterChip(
+                        label: Text('under 200'),
+                        onSelected: (_) {},
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            30,
+                          ), // Rounded edges
+                          side: const BorderSide(
+                            color: Colors.black12,
+                          ), // Light grey border
+                        ),
+                      ),
                       const SizedBox(width: 10),
-                      FilterChip(label: Text('top rated'), onSelected: (_) {}),
+                      FilterChip(
+                        label: Text('top rated'),
+                        onSelected: (_) {},
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            30,
+                          ), // Rounded edges
+                          side: const BorderSide(
+                            color: Colors.black12,
+                          ), // Light grey border
+                        ),
+                      ),
                       const Spacer(),
                       Switch(
                         value: isVeg,
@@ -404,93 +510,144 @@ class _AddtocartState extends State<Addtocart> {
             Expanded(
               child:
                   foodItems.isEmpty
-                      ? Center(child: CircularProgressIndicator()) // Loading
+                      ? Center(child: CircularProgressIndicator())
                       : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         itemCount: foodItems.length,
                         itemBuilder: (context, index) {
                           final item = foodItems[index];
-                          return Card(
-                            margin: const EdgeInsets.symmetric(vertical: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.asset(
-                                      item['image'],
-                                      width: 70,
-                                      height: 70,
-                                      fit: BoxFit.cover,
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Food Image with rating overlay
+                                Stack(
+                                  alignment: Alignment.bottomLeft,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.asset(
+                                        item['image'],
+                                        width: 80,
+                                        height: 80,
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item['title'],
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          item['isVeg'] == true
-                                              ? '● veg'
-                                              : '▲ non veg',
-                                          style: TextStyle(
-                                            color:
-                                                item['isVeg'] == true
-                                                    ? Colors.green
-                                                    : Colors.red,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          '₹${item['newPrice']}',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () => addToCart(index),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.grey[200],
-                                      foregroundColor: Colors.black,
-                                      elevation: 0,
+                                    Container(
                                       padding: const EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 8,
+                                        horizontal: 6,
+                                        vertical: 2,
                                       ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.7),
+                                        borderRadius: const BorderRadius.only(
+                                          topRight: Radius.circular(6),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            '${item['rating']}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 2),
+                                          const Icon(
+                                            Icons.star,
+                                            color: Colors.white,
+                                            size: 12,
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    child: const Text(
-                                      'Eat 🍴',
-                                      style: TextStyle(fontSize: 20),
+                                  ],
+                                ),
+
+                                const SizedBox(width: 12),
+
+                                // Details Column
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item['title'],
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        item['isVeg'] ? '▲ non veg' : '● veg',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color:
+                                              item['isVeg']
+                                                  ? Colors.red
+                                                  : Colors.green,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Text(
+                                            '₹${item['oldPrice']}',
+                                            style: const TextStyle(
+                                              decoration:
+                                                  TextDecoration.lineThrough,
+                                              color: Colors.grey,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '₹${item['newPrice']}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Eat Button
+                                ElevatedButton(
+                                  onPressed: () => addToCart(index),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        addedToCartIndices.contains(index)
+                                            ? Colors.white
+                                            : Colors.amber,
+                                    foregroundColor: Colors.black,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 22,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                      side: const BorderSide(
+                                        color: Colors.amber,
+                                      ),
                                     ),
                                   ),
-                                ],
-                              ),
+                                  child: const Text('Eat 🍴'),
+                                ),
+                              ],
                             ),
                           );
                         },
                       ),
             ),
+
             SingleChildScrollView(
               scrollDirection: Axis.vertical,
               child: Container(
@@ -501,240 +658,342 @@ class _AddtocartState extends State<Addtocart> {
                   borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                 ),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Half / Full Chips
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         ChoiceChip(
-                          label: Text('half'),
+                          label: const Text('Half'),
                           selected: isHalf,
                           onSelected: (val) => setState(() => isHalf = true),
+                          backgroundColor: Colors.white,
+                          selectedColor: Colors.black,
+                          labelStyle: TextStyle(
+                            color: isHalf ? Colors.white : Colors.black,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            // side: const BorderSide(color: Colors.amber),
+                          ),
                         ),
+                        const SizedBox(width: 10),
                         ChoiceChip(
-                          label: Text('full'),
+                          label: const Text('Full'),
                           selected: !isHalf,
                           onSelected: (val) => setState(() => isHalf = false),
+                          backgroundColor: Colors.white,
+                          selectedColor: Colors.black,
+                          labelStyle: TextStyle(
+                            color: !isHalf ? Colors.white : Colors.black,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            // side: const BorderSide(color: Colors.amber),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 10),
+
+                    // Horizontal Cart Images with item names (no quantity controls here)
                     if (cartItems.isNotEmpty)
-                      SingleChildScrollView(
-                        scrollDirection: Axis.vertical,
+                      SizedBox(
+                        height: 80,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: cartItems.length,
+                          itemBuilder: (context, index) {
+                            return GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  selectedCartIndex = index;
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                ),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color:
+                                          selectedCartIndex == index
+                                              ? Colors.amber
+                                              : Colors.transparent,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.asset(
+                                      cartItems[index]['image'],
+                                      width: 70,
+                                      height: 70,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+
+                    const SizedBox(height: 20),
+
+                    // Shared Quantity controls + Proceed button, one line only, for all items
+                    if (selectedCartIndex != null)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              IconButton(
+                                onPressed: () => updateQuantity(true),
+                                icon: const Icon(Icons.add),
+                                color: Colors.green,
+                              ),
+                              Container(
+                                width: 40,
+                                height: 36,
+                                alignment: Alignment.center,
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.black26),
+                                  borderRadius: BorderRadius.circular(6),
+                                  color: Colors.grey[100],
+                                ),
+                                child: Text(
+                                  '${cartItems[selectedCartIndex!]['quantity']}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => updateQuantity(false),
+                                icon: const Icon(Icons.remove),
+                                color: Colors.red,
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                          ),
+
+                          SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: () => showAddressCard(context),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.amber,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 10,
+                                horizontal: 40,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            child: const Text(
+                              "Proceed",
+                              style: TextStyle(fontSize: 20),
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (hasAddressConfirmed) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
                         child: Column(
-                          children:
-                              cartItems.map((item) {
-                                int index = cartItems.indexOf(item);
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (cartItems.isEmpty)
+                              const Text("Your cart is empty."),
+                            if (cartItems.isNotEmpty)
+                              ...cartItems.map((item) {
+                                final imagePath = item['image'] ?? '';
+                                final hasImage = imagePath.isNotEmpty;
+
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.only(bottom: 12),
                                   child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.asset(
-                                          item['image'],
-                                          width: 70,
-                                          height: 70,
-                                          fit: BoxFit.cover,
+                                        borderRadius: BorderRadius.circular(10),
+                                        child:
+                                            hasImage
+                                                ? Image.asset(
+                                                  imagePath,
+                                                  width: 50,
+                                                  height: 50,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) {
+                                                    return Container(
+                                                      width: 50,
+                                                      height: 50,
+                                                      color:
+                                                          Colors.grey.shade300,
+                                                      child: Icon(
+                                                        Icons
+                                                            .image_not_supported,
+                                                        color: Colors.grey[600],
+                                                      ),
+                                                    );
+                                                  },
+                                                )
+                                                : Container(
+                                                  width: 50,
+                                                  height: 50,
+                                                  color: Colors.grey.shade300,
+                                                  child: Icon(
+                                                    Icons.image_not_supported,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        fit: FlexFit.loose,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              item['name'] ?? 'No Name',
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              "Qty: ${item['quantity'] ?? 0}",
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(width: 12),
                                       Text(
-                                        '${item['name']} x${item['quantity']}',
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            onPressed:
-                                                () => updateQuantity(
-                                                  index,
-                                                  false,
-                                                ),
-                                            icon: Icon(Icons.remove),
-                                            color: Colors.red,
-                                          ),
-                                          Text('${item['quantity']}'),
-                                          IconButton(
-                                            onPressed:
-                                                () =>
-                                                    updateQuantity(index, true),
-                                            icon: Icon(Icons.add),
-                                            color: Colors.green,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        '₹${item['price'] * item['quantity']}',
+                                        "₹${((item['price'] ?? 0) * (item['quantity'] ?? 0)).toStringAsFixed(2)}",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 );
                               }).toList(),
-                        ),
-                      ),
-                    if (showSummaryCard) ...[
-                      const SizedBox(height: 20),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.vertical,
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.vertical,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                ...cartItems.map((item) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: Row(
-                                      children: [
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          child: Image.asset(
-                                            item['image'],
-                                            width: 50,
-                                            height: 50,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                item['name'],
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text("Qty: ${item['quantity']}"),
-                                            ],
-                                          ),
-                                        ),
-                                        Text(
-                                          "₹${(item['price'] * item['quantity']).toStringAsFixed(2)}",
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }),
-                                const Divider(thickness: 1),
-                                TextField(
-                                  controller: couponController,
-                                  decoration: InputDecoration(
-                                    hintText: 'Enter coupon code',
-                                    suffixIcon: TextButton(
-                                      child: const Text('Apply'),
-                                      onPressed: () {
-                                        String code =
-                                            couponController.text.trim();
-                                        setState(() {
-                                          discountAmount =
-                                              code == 'KUNALDEB2025' ? 150 : 0;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                _buildPriceRow("Sub Total", getSubtotal()),
-                                _buildPriceRow(
-                                  "Delivery Charges",
-                                  getDeliveryCharge(),
-                                ),
-                                _buildPriceRow("Discount", -discountAmount),
-                                _buildPriceRow(
-                                  "Platform Fee",
-                                  getPlatformFee(),
-                                ),
-                                const Divider(thickness: 1),
-                                _buildPriceRow(
-                                  "Total",
-                                  getTotal(),
-                                  isBold: true,
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
+
+                            const Divider(thickness: 1),
+
+                            TextField(
+                              controller: couponController,
+                              decoration: InputDecoration(
+                                hintText: 'Enter coupon code',
+                                suffixIcon: TextButton(
+                                  child: const Text('Apply'),
                                   onPressed: () {
-                                    if (cartItems.isEmpty) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            "Cart is empty. Add some items before checking out.",
-                                          ),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                      Navigator.pop(context);
-                                      return;
-                                    }
-
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          "Order placed for ₹${getTotal().toStringAsFixed(2)}",
-                                        ),
-                                        duration: Duration(seconds: 2),
-                                      ),
-                                    );
-
-                                    Future.delayed(Duration(seconds: 2), () {
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => HomePage(),
-                                        ),
-                                      );
+                                    String code = couponController.text.trim();
+                                    setState(() {
+                                      discountAmount =
+                                          code == 'KUNALDEB2025' ? 150 : 0;
                                     });
                                   },
-
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.orange,
-                                    foregroundColor: Colors.white,
-                                    minimumSize: const Size(
-                                      double.infinity,
-                                      48,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: const Text("Checkout"),
                                 ),
-                              ],
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
                             ),
-                          ),
+
+                            const SizedBox(height: 12),
+
+                            _buildPriceRow("Sub Total", getSubtotal()),
+                            _buildPriceRow(
+                              "Delivery Charges",
+                              getDeliveryCharge(),
+                            ),
+                            _buildPriceRow("Discount", -discountAmount),
+                            _buildPriceRow("Platform Fee", getPlatformFee()),
+
+                            const Divider(thickness: 1),
+
+                            _buildPriceRow("Total", getTotal(), isBold: true),
+
+                            const SizedBox(height: 20),
+
+                            ElevatedButton(
+                              onPressed: () {
+                                if (cartItems.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        "Cart is empty. Add some items before checking out.",
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return;
+                                }
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      "Order placed for ₹${getTotal().toStringAsFixed(2)}",
+                                    ),
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+
+                                Future.delayed(const Duration(seconds: 2), () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => HomePage(),
+                                    ),
+                                  );
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text("Checkout"),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: () => showAddressCard(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.amber,
-                        minimumSize: Size(double.infinity, 42),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: const Text('Proceed'),
-                    ),
                   ],
                 ),
               ),
