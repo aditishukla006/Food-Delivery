@@ -697,7 +697,6 @@ class _AddtocartState extends State<Addtocart> {
                     ),
                     const SizedBox(height: 10),
 
-                    // Horizontal Cart Images with item names (no quantity controls here)
                     if (cartItems.isNotEmpty)
                       SizedBox(
                         height: 80,
@@ -744,7 +743,6 @@ class _AddtocartState extends State<Addtocart> {
 
                     const SizedBox(height: 20),
 
-                    // Shared Quantity controls + Proceed button, one line only, for all items
                     if (selectedCartIndex != null)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
