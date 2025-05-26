@@ -6,45 +6,60 @@ class RestaurantSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<QuerySnapshot>(
-      future: FirebaseFirestore.instance.collection('restaurant').get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Restaurant',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          FutureBuilder<QuerySnapshot>(
+            future: FirebaseFirestore.instance.collection('restaurant').get(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text("No restaurants found."));
-        }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text("No restaurants found."));
+              }
 
-        final restaurants = snapshot.data!.docs;
+              final restaurants = snapshot.data!.docs;
 
-        return Column(
-          children:
-              restaurants.map((doc) {
-                final data = doc.data() as Map<String, dynamic>;
-                final foodItems =
-                    (data['fooditems'] as List<dynamic>? ?? []).map((item) {
-                      final map = Map<String, dynamic>.from(item as Map);
-                      return {
-                        'image': map['image'] ?? '',
-                        'price': map['price'].toString(),
-                      };
-                    }).toList();
+              return Column(
+                children:
+                    restaurants.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final foodItems =
+                          (data['fooditems'] as List<dynamic>? ?? []).map((
+                            item,
+                          ) {
+                            final map = Map<String, dynamic>.from(item as Map);
+                            return {
+                              'image': map['image'] ?? '',
+                              'price': map['price'].toString(),
+                            };
+                          }).toList();
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: _restaurantCard(
-                    image: data['image'] ?? '',
-                    name: data['name'] ?? '',
-                    cuisine: data['cuisine'] ?? '',
-                    trending: data['trending'] ?? false,
-                    foodItems: foodItems,
-                  ),
-                );
-              }).toList(),
-        );
-      },
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: _restaurantCard(
+                          image: data['image'] ?? '',
+                          name: data['name'] ?? '',
+                          cuisine: data['cuisine'] ?? '',
+                          trending: data['trending'] ?? false,
+                          foodItems: foodItems,
+                        ),
+                      );
+                    }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 

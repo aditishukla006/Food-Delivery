@@ -122,6 +122,8 @@ class _HomePageState extends State<HomePage> {
               FoodPlaylist(),
               const SizedBox(height: 20),
               RestaurantSection(),
+              const SizedBox(height: 20),
+              RestaurantSection(),
               //button
               const SizedBox(height: 30),
               Container(

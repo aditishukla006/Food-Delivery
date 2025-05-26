@@ -875,8 +875,7 @@ class _AddtocartState extends State<Addtocart> {
                                                 ),
                                       ),
                                       const SizedBox(width: 10),
-                                      Flexible(
-                                        fit: FlexFit.loose,
+                                      Expanded(
                                         child: Column(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
